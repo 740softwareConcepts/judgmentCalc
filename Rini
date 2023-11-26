@@ -1,0 +1,144 @@
+import sqlite3
+from faker import Faker
+from datetime import datetime, timedelta
+import random
+
+# Connect to SQLite database (or create a new one if it doesn't exist)
+connection = sqlite3.connect("fake_data.db")
+cursor = connection.cursor()
+
+# Create tables
+create_clients_table_query = """
+CREATE TABLE IF NOT EXISTS Clients (
+    ClientID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name TEXT,
+    LastName TEXT,
+    DOB DATE,
+    CreateDate DATE
+)
+"""
+
+create_case_information_table_query = """
+CREATE TABLE IF NOT EXISTS CaseInformation (
+    CaseID INTEGER PRIMARY KEY AUTOINCREMENT,
+    ClientID INTEGER,
+    CreateDate DATE,
+    JudgmentDate DATE,
+    FOREIGN KEY (ClientID) REFERENCES Clients(ClientID)
+)
+"""
+
+# Execute table creation queries
+cursor.execute(create_clients_table_query)
+cursor.execute(create_case_information_table_query)
+
+# Create a Faker object
+fake = Faker()
+
+# Function to generate random date within a range
+def generate_random_date(start_date, end_date):
+    return start_date + timedelta(seconds=random.randint(0, int((end_date - start_date).total_seconds())))
+
+# Function to add a new user
+def useradd():
+    print("User ADD:")
+    first_name = input("Tell me the first name? ")
+    last_name = input("And the last name? ")
+    dob = input("Date of Birth (YYYY-MM-DD): ")
+    create_date = input("Create Date (YYYY-MM-DD): ")
+
+    # Option to enter an existing case number
+    case_number = input("Enter Case Number (or leave blank to create a new case): ")
+
+    if case_number:
+        existing_case = find_case_by_id(int(case_number))
+        if existing_case:
+            # Associate the new user with the existing case
+            customer_id = add_person(first_name, last_name, dob, create_date)
+            session.query(Cases).filter(Cases.CaseID == existing_case.CaseID).update({"CustomerID": customer_id})
+            session.commit()
+            print(f"Client ID {customer_id} associated with Case ID {existing_case.CaseID}.")
+        else:
+            print("Case not found. The user cannot be added to a non-existing case.")
+    else:
+        # Create a new case and associate it with the new user
+        case_type = input("Case Type: ")
+        case_create_date = input("Case Create Date (YYYY-MM-DD): ")
+        case_id = add_case(case_type, case_create_date)
+
+        # Add a person with the generated case ID
+        customer_id = add_person(first_name, last_name, dob, create_date)
+        session.query(Cases).filter(Cases.CaseID == case_id).update({"CustomerID": customer_id})
+        session.commit()
+
+        print(f"Client ID {customer_id} associated with new Case ID {case_id}.")
+
+    confirm = input("Type 'Y' to write to the table: ")
+    if confirm.upper() == 'Y':
+        print("OK, I've written the changes.")
+    else:
+        print("Changes not written.")
+
+# Function to update user details
+def userupdate():
+    print("User UPDATE:")
+    customer_id = input("Enter Client ID to update: ")
+    first_name = input("Tell me the new first name? ")
+    last_name = input("And the new last name? ")
+    dob = input("New Date of Birth (YYYY-MM-DD): ")
+    create_date = input("New Create Date (YYYY-MM-DD): ")
+
+    update_person(int(customer_id), first_name, last_name, dob, create_date)
+    print(f"User with Client ID {customer_id} updated.")
+
+# Function to delete user
+def userdelete():
+    print("User DELETE:")
+    customer_id = input("Enter Client ID to delete: ")
+    delete_person(int(customer_id))
+    print(f"User with Client ID {customer_id} deleted.")
+
+# Function to find case by ID
+def find_case_by_id(case_id):
+    return session.query(Cases).filter(Cases.CaseID == case_id).first()
+
+# Function to add a person
+def add_person(first_name, last_name, dob, create_date):
+    new_person = People(
+        FirstName=first_name,
+        LastName=last_name,
+        DOB=dob,
+        CreateDate=create_date
+    )
+    session.add(new_person)
+    session.commit()
+    return new_person.CustomerID
+
+# Function to add a case
+def add_case(case_type, create_date):
+    new_case = Cases(
+        CaseType=case_type,
+        CreateDate=create_date
+    )
+    session.add(new_case)
+    session.commit()
+    return new_case.CaseID
+
+# Function to update person details
+def update_person(customer_id, first_name, last_name, dob, create_date):
+    session.query(People).filter(People.CustomerID == customer_id).update(
+        {"FirstName": first_name, "LastName": last_name, "DOB": dob, "CreateDate": create_date})
+    session.commit()
+
+# Function to delete person
+def delete_person(customer_id):
+    session.query(People).filter(People.CustomerID == customer_id).delete()
+    session.commit()
+
+# You can now call the functions as needed
+useradd()
+userupdate()
+userdelete()
+
+# Close the connection
+connection.close()

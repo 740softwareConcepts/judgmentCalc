@@ -80,7 +80,61 @@ def useradd():
     else:
         print("Changes not written.")
 
-# ... (rest of the functions remain the same)
+# Function to update user details
+def userupdate():
+    print("User UPDATE:")
+    customer_id = input("Enter Client ID to update: ")
+    first_name = input("Tell me the new first name? ")
+    last_name = input("And the new last name? ")
+    dob = input("New Date of Birth (YYYY-MM-DD): ")
+    create_date = input("New Create Date (YYYY-MM-DD): ")
+
+    update_person(int(customer_id), first_name, last_name, dob, create_date)
+    print(f"User with Client ID {customer_id} updated.")
+
+# Function to delete user
+def userdelete():
+    print("User DELETE:")
+    customer_id = input("Enter Client ID to delete: ")
+    delete_person(int(customer_id))
+    print(f"User with Client ID {customer_id} deleted.")
+
+# Function to find case by ID
+def find_case_by_id(case_id):
+    cursor.execute(f"SELECT * FROM CaseInformation WHERE CaseID = {case_id}")
+    return cursor.fetchone()
+
+# Function to add a person
+def add_person(first_name, last_name, dob, create_date):
+    cursor.execute("""
+        INSERT INTO Clients (Name, LastName, DOB, CreateDate)
+        VALUES (%s, %s, %s, %s)
+    """, (first_name, last_name, dob, create_date))
+    connection.commit()
+    return cursor.lastrowid
+
+# Function to add a case
+def add_case(case_type, create_date):
+    cursor.execute("""
+        INSERT INTO CaseInformation (CaseType, CreateDate)
+        VALUES (%s, %s)
+    """, (case_type, create_date))
+    connection.commit()
+    return cursor.lastrowid
+
+# Function to update person details
+def update_person(customer_id, first_name, last_name, dob, create_date):
+    cursor.execute("""
+        UPDATE Clients
+        SET Name = %s, LastName = %s, DOB = %s, CreateDate = %s
+        WHERE ClientID = %s
+    """, (first_name, last_name, dob, create_date, customer_id))
+    connection.commit()
+
+# Function to delete person
+def delete_person(customer_id):
+    cursor.execute("DELETE FROM Clients WHERE ClientID = %s", (customer_id,))
+    connection.commit()
 
 # You can now call the functions as needed
 useradd()
@@ -89,3 +143,4 @@ userdelete()
 
 # Close the connection
 connection.close()
+

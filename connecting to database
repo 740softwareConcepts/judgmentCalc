@@ -1,0 +1,39 @@
+import mysql.connector
+
+mysql_config = {
+    'host': 'database-1.ctnfprzjtuyt.us-east-1.rds.amazonaws.com',
+    'user': 'admin',
+    'password': 'Dnnbmstn1jrg',
+    'database': 'DataWarehouse'
+}
+
+create_table_query = """
+CREATE TABLE IF NOT EXISTS ExampleTable (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(255),
+    Age INT
+)
+"""
+
+try:
+    connection = mysql.connector.connect(**mysql_config)
+
+    if connection.is_connected():
+        print("Successfully connected to the MySQL server.")
+
+        cursor = connection.cursor()
+
+        cursor.execute(create_table_query)
+
+        print("Table 'ExampleTable' created successfully.")
+
+        connection.commit()
+
+except mysql.connector.Error as e:
+    print(f"Error: {e}")
+
+finally:
+    if 'connection' in locals() and connection.is_connected():
+        cursor.close()
+        connection.close()
+        print("Connection closed.")

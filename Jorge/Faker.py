@@ -44,6 +44,10 @@ cursor = connection.cursor()
 cursor.execute(create_clients_table_query)
 cursor.execute(create_case_information_table_query)
 
+# Set auto-increment starting values
+cursor.execute("ALTER TABLE CaseInformation AUTO_INCREMENT = 1000")
+
+
 # Generate and insert data for Clients table
 for i in range(1, 201):
     name = fake.first_name()

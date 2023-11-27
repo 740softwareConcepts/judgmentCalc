@@ -32,6 +32,7 @@ def user(action):
         click.echo(f"Client with ID {client_id} updated successfully!")
 
 
+
 def user2(action, name, last_name, dob, create_date, client_id):
     if action == 'add':
         cursor = connection.cursor()

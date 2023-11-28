@@ -1,0 +1,8 @@
+judgment.py
+setup.py
+JudgmentCLI.egg-info/PKG-INFO
+JudgmentCLI.egg-info/SOURCES.txt
+JudgmentCLI.egg-info/dependency_links.txt
+JudgmentCLI.egg-info/entry_points.txt
+JudgmentCLI.egg-info/requires.txt
+JudgmentCLI.egg-info/top_level.txt

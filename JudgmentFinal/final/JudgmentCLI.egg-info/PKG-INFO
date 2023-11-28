@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: JudgmentCLI
+Version: 1.0
+Requires-Dist: Click
+Requires-Dist: mysql.connector
+Requires-Dist: datetime

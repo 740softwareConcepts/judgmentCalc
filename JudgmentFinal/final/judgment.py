@@ -149,6 +149,7 @@ def remove_case(case_number, remove_clients, remove_liabilities):
 
 
 
+<<<<<<< HEAD
 
 @cli.command()
 @click.option('--case-identifier', prompt='Enter case identifier', help='Case number or case ID to manage users')
@@ -180,15 +181,72 @@ def manage_users(case_identifier, add_user, remove_user, view_users):
                     click.echo(f"No users found for case '{case_identifier}'.")
                 else:
                     click.echo(f"Users associated with case '{case_identifier}':")
+=======
+@cli.command()
+@click.option('--case-number', prompt='Enter case number', help='Case number to manage users')
+@click.option('--add-user', is_flag=True, default=False, help='Add user information')
+@click.option('--remove-user', is_flag=True, default=False, help='Remove user information')
+@click.option('--view-users', is_flag=True, default=False, help='View users information')
+def manage_users(case_number, add_user, remove_user, view_users):
+    try:
+        cursor.execute("SELECT caseID FROM CASES WHERE caseNumber = %s", (case_number,))
+        case_id = cursor.fetchone()
+
+        if case_id:
+            case_id = case_id[0]
+
+            if add_user:
+                first_name = click.prompt('Enter user first name', type=str)
+                last_name = click.prompt('Enter user last name', type=str)
+                user_type = click.prompt('Enter user type', type=str)
+                current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+                cursor.execute("INSERT INTO CLIENTS (firstName, lastName, type, caseID, updateDate) VALUES (%s, %s, %s, %s, %s)",
+                               (first_name, last_name, user_type, case_id, current_date))
+                conn.commit()
+
+                click.echo(f"User '{first_name} {last_name}' added to case '{case_number}'.")
+
+            if remove_user:
+                cursor.execute("SELECT firstName, lastName, type FROM CLIENTS WHERE caseID = %s", (case_id,))
+                users = cursor.fetchall()
+                if not users:
+                    click.echo(f"No users found for case '{case_number}'.")
+                else:
+                    click.echo(f"Users associated with case '{case_number}':")
+                    for index, user in enumerate(users, start=1):
+                        click.echo(f"{index}. {user[0]} {user[1]} ({user[2]})")
+
+                    user_choice = click.prompt('Enter the number of the user to remove', type=int)
+                    if 1 <= user_choice <= len(users):
+                        user_to_remove = users[user_choice - 1]
+                        # Perform the deletion of the selected user here
+                        click.echo(f"Removing user: {user_to_remove[0]} {user_to_remove[1]} ({user_to_remove[2]})")
+                    else:
+                        click.echo("Invalid user choice.")
+
+            if view_users:
+                cursor.execute("SELECT firstName, lastName, type FROM CLIENTS WHERE caseID = %s", (case_id,))
+                users = cursor.fetchall()
+                if not users:
+                    click.echo(f"No users found for case '{case_number}'.")
+                else:
+                    click.echo(f"Users associated with case '{case_number}':")
+>>>>>>> 1a7290d (working)
                     for index, user in enumerate(users, start=1):
                         click.echo(f"{index}. {user[0]} {user[1]} ({user[2]})")
 
         else:
+<<<<<<< HEAD
             click.echo(f"Case '{case_identifier}' not found.")
+=======
+            click.echo(f"Case '{case_number}' not found.")
+>>>>>>> 1a7290d (working)
     except mysql.connector.Error as err:
         click.echo(f"Error: {err}")
     finally:
         conn.close()
+<<<<<<< HEAD
 
 
 
@@ -308,3 +366,5 @@ def remove_orphaned_entries(list_orphaned, show_attributes,remove_orphaned):
         click.echo(f"Error: {err}")
     finally:
         conn.close()
+=======
+>>>>>>> 1a7290d (working)

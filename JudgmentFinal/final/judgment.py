@@ -1,6 +1,8 @@
 import click
 import mysql.connector
 from datetime import datetime as dt
+
+
 # Connect to MySQL (adjust the parameters accordingly)
 conn = mysql.connector.connect(
     host="database-1.ctnfprzjtuyt.us-east-1.rds.amazonaws.com",

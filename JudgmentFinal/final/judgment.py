@@ -15,23 +15,12 @@ cursor = conn.cursor()
 def cli():
     """This is a 2 paragrah description of the command line tool."""
     pass 
+
+
+
 @cli.command()
-@click.option('--string', default='World', help='Tell me who to greet.')
-@click.option('--repeat', default=1, help='How many times to greet.')
-@click.argument('out', type=click.File('w'), default='-', required=False)
- 
-def say(string,repeat, out):
-    """This is an exmaple command I built with the help of the quickstart guide
-        This command greets you"""
-    click.echo('Hello {}!'.format(string))
-    name = input('Please tell me yousgsr name: ')
-    for x in range(repeat):
-        click.echo('Hello {}!'.format(name), file=out)
-        #this file will open lazy by default, meaning it will not open until you write to it    
-        #an error will mean the file will not be closed or modified
-        click.echo(out)
-@cli.command()
-def create_case():
+def case_create():
+    """This is a mini documenation for the command"""
     case_number = click.prompt('Enter case number (2 letters, 8-10 characters)', type=str)
     if not (len(case_number) >= 8 and len(case_number) <= 10 and case_number[:2].isalpha()):
         click.echo("Case number must begin with 2 letters and have 8-10 characters.")
@@ -84,8 +73,23 @@ def create_case():
                 break
             amount = click.prompt('Enter amount', type=float)
             description = click.prompt('Enter description', type=str)
-            cursor.execute("INSERT INTO ACCOUNTING (caseID, type, incurredDate, amount, description) VALUES (%s, %s, %s, %s, %s)",
-                           (case_id, 'liability', incurred_date, amount, description))
+            interest_type = click.prompt('Enter interest type (contractual or statutory)', type=str,
+                                     default='contractual', show_default=True)
+            while interest_type.lower() not in ('contractual', 'statutory'):
+                click.echo("Interest type can only be 'contractual' or 'statutory'.")
+                interest_type = click.prompt('Enter interest type (contractual or statutory)', type=str,
+                                         default='contractual', show_default=True)
+            contractualinterest = None  # Initialize contractualinterest variable
+
+            if interest_type.lower() == 'contractual':
+                while True:
+                    contractualinterest = click.prompt('Enter contractual interest (between 0 and 1)', type=float)
+                    if 0 <= contractualinterest <= 1:
+                        break
+                    else:
+                        click.echo("Contractual interest should be between 0 and 1.")
+            cursor.execute("INSERT INTO ACCOUNTING (caseID, type, incurredDate, amount, description, interestType, interest) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                           (case_id, 'liability', incurred_date, amount, description, interest_type, contractualinterest))
             conn.commit()
             click.echo("Liability added to the case.")
             add_another_liability = click.confirm('Add another liability?')
@@ -99,7 +103,8 @@ def create_case():
 @click.confirmation_option(prompt='Are you sure you want to remove this case?')
 @click.option('--remove-clients', is_flag=True, default=False, help='Remove associated clients')
 @click.option('--remove-liabilities', is_flag=True, default=False, help='Remove associated liabilities')
-def remove_case(case_number, remove_clients, remove_liabilities):
+def case_remove(case_number, remove_clients, remove_liabilities):
+    """This is a mini documenation for the command"""
     try:
         cursor.execute("SET FOREIGN_KEY_CHECKS=0")  # Disable foreign key checks
         cursor.execute("SELECT caseID FROM CASES WHERE caseNumber = %s", (case_number,))
@@ -128,11 +133,12 @@ def remove_case(case_number, remove_clients, remove_liabilities):
 
 
 @cli.command()
-@click.option('--case-number', prompt='Enter case number', help='Case number to manage users')
-@click.option('--add-user', is_flag=True, default=False, help='Add user information')
-@click.option('--remove-user', is_flag=True, default=False, help='Remove user information')
-@click.option('--view-users', is_flag=True, default=False, help='View users information')
-def manage_users(case_number, add_user, remove_user, view_users):
+@click.option('--case-number', prompt='Enter case number', help='Case number to manage party information')
+@click.option('--add', is_flag=True, default=False, help='Add party information')
+@click.option('--remove', is_flag=True, default=False, help='Remove party information')
+@click.option('--view', is_flag=True, default=False, help='View party information')
+def parties(case_number, add, remove, view):
+    '''This is a mini documenation for the command'''
     try:
         cursor.execute("SELECT caseID FROM CASES WHERE caseNumber = %s", (case_number,))
         case_id = cursor.fetchone()
@@ -140,7 +146,7 @@ def manage_users(case_number, add_user, remove_user, view_users):
         if case_id:
             case_id = case_id[0]
 
-            if add_user:
+            if add:
                 first_name = click.prompt('Enter user first name', type=str)
                 last_name = click.prompt('Enter user last name', type=str)
                 user_type = click.prompt('Enter user type (defendant/plaintiff)', type=str,
@@ -157,7 +163,7 @@ def manage_users(case_number, add_user, remove_user, view_users):
 
                 click.echo(f"User '{first_name} {last_name}' added to case '{case_number}'.")
 
-            if remove_user:
+            if remove:
                 cursor.execute("SELECT firstName, lastName, type FROM CLIENTS WHERE caseID = %s", (case_id,))
                 users = cursor.fetchall()
                 if not users:
@@ -177,7 +183,7 @@ def manage_users(case_number, add_user, remove_user, view_users):
                     else:
                         click.echo("Invalid user choice.")
 
-            if view_users:
+            if view:
                 cursor.execute("SELECT firstName, lastName, type FROM CLIENTS WHERE caseID = %s", (case_id,))
                 users = cursor.fetchall()
                 if not users:
@@ -199,12 +205,13 @@ def manage_users(case_number, add_user, remove_user, view_users):
 
 
 @cli.command()
-@click.option('--list-orphaned', is_flag=True, default=False, help='List orphaned entries without deletion')
+@click.option('--list', is_flag=True, default=False, help='List orphaned entries without deletion')
 @click.option('--show-attributes', is_flag=True, default=False, help='Show attributes of orphaned entries')
-@click.option('--remove-orphaned', is_flag=True, default=False, help='Remove orphaned entries')
-def remove_orphaned_entries(list_orphaned, show_attributes,remove_orphaned):
+@click.option('--remove', is_flag=True, default=False, help='Remove orphaned entries')
+def orphaned_entries(list, show_attributes,remove):
+    """This is a mini documenation for the command"""
     try:
-        if list_orphaned:
+        if list:
             cursor.execute("""
                 SELECT c.* 
                 FROM CLIENTS c
@@ -268,7 +275,7 @@ def remove_orphaned_entries(list_orphaned, show_attributes,remove_orphaned):
 
 
 
-        if remove_orphaned:
+        if remove:
             cursor.execute("""
                 SELECT c.caseID 
                 FROM CLIENTS c

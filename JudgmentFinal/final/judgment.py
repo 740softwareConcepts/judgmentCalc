@@ -88,8 +88,17 @@ def case_create():
                         break
                     else:
                         click.echo("Contractual interest should be between 0 and 1.")
-            cursor.execute("INSERT INTO ACCOUNTING (caseID, type, incurredDate, amount, description, interestType, interest) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                           (case_id, 'liability', incurred_date, amount, description, interest_type, contractualinterest))
+            has_judgment = click.confirm('Is there a judgment for this liability?')
+            if has_judgment:
+                while True:
+                    judgment_date = click.prompt('Enter judgment date (YYYY-MM-DD)', type=str)
+                    try:
+                        judgment_date = dt.strptime(judgment_date, '%Y-%m-%d').date()
+                        break
+                    except ValueError:
+                        click.echo("Invalid date format. Please use YYYY-MM-DD format.")            
+            cursor.execute("INSERT INTO ACCOUNTING (caseID, type, incurredDate, amount, description, interestType, interest,judgmentDate) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                           (case_id, 'liability', incurred_date, amount, description, interest_type, contractualinterest, judgment_date if has_judgment else None))
             conn.commit()
             click.echo("Liability added to the case.")
             add_another_liability = click.confirm('Add another liability?')
@@ -134,9 +143,9 @@ def case_remove(case_number, remove_clients, remove_liabilities):
 
 @cli.command()
 @click.option('--case-number', prompt='Enter case number', help='Case number to manage party information')
-@click.option('--add', is_flag=True, default=False, help='Add party information')
-@click.option('--remove', is_flag=True, default=False, help='Remove party information')
-@click.option('--view', is_flag=True, default=False, help='View party information')
+@click.option('--add', is_flag=True, default=False, help='Add party information by Case Number')
+@click.option('--remove', is_flag=True, default=False, help='Remove party information by Case Number')
+@click.option('--view', is_flag=True, default=False, help='View party information by Case Number')
 def parties(case_number, add, remove, view):
     '''This is a mini documenation for the command'''
     try:
@@ -192,7 +201,7 @@ def parties(case_number, add, remove, view):
                     click.echo(f"Users associated with case '{case_number}':")
                     for index, user in enumerate(users, start=1):
                         click.echo(f"{index}. {user[0]} {user[1]} ({user[2]})")
-
+            
         else:
             click.echo(f"Case '{case_number}' not found.")
     except mysql.connector.Error as err:
@@ -320,3 +329,96 @@ def orphaned_entries(list, show_attributes,remove):
         click.echo(f"Error: {err}")
     finally:
         conn.close()
+
+
+@cli.command()
+@click.option('--case-number', prompt='Enter case number to update', help='Case number to update')
+def case_update(case_number):
+    try:
+        cursor.execute("SELECT caseID FROM CASES WHERE caseNumber = %s", (case_number,))
+        case_id = cursor.fetchone()
+
+        if case_id:
+            case_id = case_id[0]
+
+            new_case_number = click.prompt('Enter new case number (2 letters, 8-10 characters)', type=str)
+            if not (len(new_case_number) >= 8 and len(new_case_number) <= 10 and new_case_number[:2].isalpha()):
+                click.echo("Case number must begin with 2 letters and have 8-10 characters.")
+                return
+
+            current_date = dt.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute("UPDATE CASES SET caseNumber = %s, updateDate = %s WHERE caseID = %s",
+                           (new_case_number, current_date, case_id))
+            conn.commit()
+            click.echo(f"Case '{case_number}' updated to '{new_case_number}' with update date {current_date}.")
+        else:
+            click.echo(f"Case '{case_number}' not found.")
+    except mysql.connector.Error as err:
+        click.echo(f"Error: {err}")
+    finally:
+        conn.close()
+
+@cli.command()
+@click.option('--case-number', prompt='Enter partial case number to search', help='Partial case number to search')
+@click.option('--start-date', help='Start date (YYYY-MM-DD) to filter cases')
+@click.option('--end-date', help='End date (YYYY-MM-DD) to filter cases')
+def case_search(case_number, start_date, end_date):
+    try:
+        query = "SELECT * FROM CASES WHERE caseNumber LIKE %s"
+        params = ('%' + case_number + '%',)
+
+        if start_date and end_date:
+            start_datetime = dt.strptime(start_date, '%Y-%m-%d')
+            end_datetime = dt.strptime(end_date, '%Y-%m-%d')
+            query += " AND createDate BETWEEN %s AND %s"
+            params += (start_datetime, end_datetime)
+
+        cursor.execute(query, params)
+        cases = cursor.fetchall()
+
+        if cases:
+            click.echo("Matching cases:")
+            for case in cases:
+                # Display the case details, modify this part based on your table structure
+                click.echo(f"Case Number: {case[1]}")  # Assuming caseNumber is at index 1
+                click.echo(f"Create Date: {case[2]}")  # Assuming createDate is at index 2
+                click.echo(f"Update Date: {case[3]}")  # Assuming updateDate is at index 3
+                # Add other attributes as needed
+        else:
+            click.echo(f"No matching cases found.")
+    except mysql.connector.Error as err:
+        click.echo(f"Error: {err}")
+    finally:
+        conn.close()
+
+@cli.command()
+@click.option('--search-firstname', help='Search users by first name')
+@click.option('--search-lastname', help='Search users by last name')
+def party_search(search_firstname, search_lastname):
+    '''Search clients by first or last name'''
+    try:
+        if search_firstname and search_lastname:
+            cursor.execute("SELECT * FROM CLIENTS WHERE firstName LIKE %s AND lastName LIKE %s",
+                           (f'%{search_firstname}%', f'%{search_lastname}%'))
+        elif search_firstname:
+            cursor.execute("SELECT * FROM CLIENTS WHERE firstName LIKE %s", (f'%{search_firstname}%',))
+        elif search_lastname:
+            cursor.execute("SELECT * FROM CLIENTS WHERE lastName LIKE %s", (f'%{search_lastname}%',))
+        else:
+            click.echo("Please provide at least one search parameter.")
+            return
+
+        clients = cursor.fetchall()
+        if not clients:
+            click.echo("No clients found matching the search criteria.")
+        else:
+            for client in clients:
+                case_id = client[4]  # Assuming the caseID is at index 3 in the result tuple
+                cursor.execute("SELECT caseNumber FROM CASES WHERE caseID = %s", (case_id,))
+                case_number = cursor.fetchone()
+                case_number = case_number[0] if case_number else 'Case number not found'
+                click.echo(f"Client: {client[1]} {client[2]} | Case Number: {case_number}")
+    except mysql.connector.Error as err:
+        click.echo(f"Error: {err}")
+    finally:
+        conn.close()        

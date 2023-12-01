@@ -516,6 +516,10 @@ def liabilities(add, remove, view, case_number):
                     click.echo("No liabilities found for this case.")
                 else:
                     click.echo(f"Liabilities associated with case '{case_number}':")
+                    # Display attribute titles
+                    attributes = [desc[0] for desc in cursor.description]
+                    click.echo(attributes)
+                    # Display liabilities
                     for liability in liabilities:
                         click.echo(liability)
             else:

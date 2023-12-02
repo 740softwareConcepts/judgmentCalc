@@ -428,8 +428,9 @@ def party_search(search_firstname, search_lastname):
 @click.option('--add', is_flag=True, default=False, help='Add liabilities by case number')
 @click.option('--remove', is_flag=True, default=False, help='Remove liabilities by case number')
 @click.option('--view', is_flag=True, default=False, help='View liabilities by case number')
+@click.option('--judgment-date', is_flag=True, default=False, help='Update judgment date for existing liability')
 @click.option('--case-number', help='Specify case number')
-def liabilities(add, remove, view, case_number):
+def liabilities(add, remove, view, case_number, judgment_date):
     '''Manage liabilities by case number'''
     try:
         case_number = click.prompt('Enter case number (2 letters, 8-10 characters)', type=str)
@@ -522,6 +523,31 @@ def liabilities(add, remove, view, case_number):
                     # Display liabilities
                     for liability in liabilities:
                         click.echo(liability)
+            elif judgment_date:
+                # Update judgment date for existing liability
+                cursor.execute("SELECT * FROM ACCOUNTING WHERE caseID = %s", (case_id,))
+                liabilities = cursor.fetchall()
+                if not liabilities:
+                    click.echo("No liabilities found for this case.")
+                else:
+                    click.echo(f"Liabilities associated with case '{case_number}':")
+                    for index, liability in enumerate(liabilities, start=1):
+                        click.echo(f"{index}. {liability[0]} - {liability[2]}, {liability[3]}, {liability[4]},{liability[5]}")
+                    
+                    liability_choice = click.prompt('Enter the number of the liability to update judgment date', type=int)
+                    if 1 <= liability_choice <= len(liabilities):
+                        liability_to_update = liabilities[liability_choice - 1]
+                        new_judgment_date = click.prompt('Enter new judgment date (YYYY-MM-DD)', type=str)
+                        try:
+                            new_judgment_date = dt.strptime(new_judgment_date, '%Y-%m-%d').date()
+                            cursor.execute("UPDATE ACCOUNTING SET judgmentDate = %s WHERE accountingID = %s",
+                                           (new_judgment_date, liability_to_update[0]))
+                            conn.commit()
+                            click.echo(f"Updated judgment date for liability: {liability_to_update[0]}")
+                        except ValueError:
+                            click.echo("Invalid date format. Please use YYYY-MM-DD format.")
+                    else:
+                        click.echo("Invalid liability choice.")
             else:
                 click.echo("Please specify an action: add, remove, or view liabilities.")
 
@@ -531,3 +557,49 @@ def liabilities(add, remove, view, case_number):
         click.echo(f"Error: {err}")
     finally:
         conn.close()        
+
+
+
+
+
+
+
+
+@cli.command()
+@click.option('--callid', prompt='Enter Call ID', help='Call ID')
+@click.option('--address', prompt='Enter Address', help='Address')
+@click.option('--city', prompt='Enter City', help='City')
+@click.option('--state', prompt='Enter State', help='State')
+def demo(callid, address, city, state):
+    try:
+        # Establishing a connection to MySQL
+        test = mysql.connector.connect(
+            host="master.ctnfprzjtuyt.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="(*Dnnbmstn1jrg&*)",
+            database="dbmaster"
+        )
+
+        # Creating a cursor object using the cursor() method
+        cursor = test.cursor()
+
+        # Inserting data into the table
+        insert_query = '''
+        INSERT INTO DEMO (callid, address, city, state)
+        VALUES (%s, %s, %s, %s)
+        '''
+        data = (callid, address, city, state)
+        cursor.execute(insert_query, data)
+        
+        # Committing the changes to the database
+        test.commit()
+        print("Data inserted successfully!")
+
+    except mysql.connector.Error as error:
+        print("Error: {}".format(error))
+
+    finally:
+        # Closing the cursor and connection
+        if 'connection' in locals() and test.is_connected():
+            cursor.close()
+            test.close()

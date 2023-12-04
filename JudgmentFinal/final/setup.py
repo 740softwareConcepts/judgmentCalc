@@ -9,6 +9,7 @@ setup(
         'mysql.connector',
         'datetime',
         'decimal',
+        'matplotlib',
     ],
     entry_points='''
         [console_scripts]

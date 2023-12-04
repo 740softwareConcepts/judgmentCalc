@@ -3,6 +3,7 @@ import mysql.connector
 from datetime import datetime as dt
 from datetime import timedelta
 import decimal
+import matplotlib.pyplot as plt
 
 
 # Connect to MySQL
@@ -581,7 +582,8 @@ def liabilities(add, remove, view, case_number, judgment_date):
         
 @cli.command()
 @click.option('--casenumber', prompt='Enter case number', help='Case number to calculate interest')
-def calculate_interest(casenumber):
+@click.option('--graphics', is_flag=True, help='Enable pie chart visualization')
+def calculate_interest(casenumber, graphics):
     '''Calculate interest for a liability'''
 
     try:
@@ -748,6 +750,23 @@ def calculate_interest(casenumber):
                     click.echo("-------------------------------------------------------------------------------------------------------------------------------------------------------------------")
                     click.echo(f"Liability ID: {selected_liability[0]} | Principal Amount: {selected_liability[4]} | Period: {start_date} to {end_date} | Total Interest: {total_interest}")
                     click.echo(f"Total interest calculated: {total_interest}")
+                    if graphics:
+                    # Create a pie chart for total interest and principal amount
+                        labels = ['Principal Amount', 'Total Interest']
+                        amounts = [float(selected_liability[4]), float(total_interest)]
+                        explode = (0, 0.1)  # "explode" the Total Interest slice
+
+                       
+                        plt.pie(amounts, explode=explode, labels=labels, autopct='%1.1f%%', shadow=True, startangle=140)
+                        plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+                        plt.title('Principal Amount vs Total Interest')
+                        plt.show()
+                        (plt.savefig('plot.png'))
+
+                    else:
+                        click.echo("Pie chart visualization not enabled.")
+                                
+                
                 else:
                     click.echo("Invalid liability choice.")
 

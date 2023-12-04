@@ -17,7 +17,7 @@ def case_create():
     conn.commit()
     click.echo(f"Case '{case_number}' created.")
     # Get the last inserted caseID
-    .0
+
     cursor.execute("SELECT LAST_INSERT_ID()")
     case_id = cursor.fetchone()[0]
     # Ask to add party information

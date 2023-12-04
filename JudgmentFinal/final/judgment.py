@@ -694,7 +694,6 @@ def calculate_interest(casenumber, graphics):
                                 days_diff = (rate_date - prev_date).days
                                 rate_decimal = decimal.Decimal(str(rate)) / 365  # Convert rate to Decimal
                                 interest_amount = selected_liability[4] * rate_decimal * days_diff
-                                click.echo(f"Interest amount: {interest_amount}")
                                 total_interest += interest_amount
                                 prev_date = rate_date
 
@@ -724,7 +723,7 @@ def calculate_interest(casenumber, graphics):
                         interest_amount = selected_liability[4] * interest_rate * days_diff
                         total_interest += interest_amount
 
-                        click.echo(f"Total interest calculated: {total_interest}")
+                        
 
 
                     
@@ -931,6 +930,4 @@ def generate_interest_report(casenumber):
     
     except mysql.connector.Error as err:
         click.echo(f"Error: {err}")
-
-
 

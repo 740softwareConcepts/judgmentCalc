@@ -575,85 +575,13 @@ def liabilities(add, remove, view, case_number, judgment_date):
 
 
 
-@cli.command()
-@click.option('--casenumber', prompt='Enter case number', help='Case number to calculate interest')
-def calculate_interest(casenumber):
-    '''Calculate interest for a liability'''
-
-    try:
-        # Retrieve case ID based on the provided case number
-        cursor.execute("SELECT caseID FROM CASES WHERE caseNumber = %s", (casenumber,))
-        case_id = cursor.fetchone()
-
-        if case_id:
-            case_id = case_id[0]
-
-            # Fetch liabilities related to the given case number
-            cursor.execute("SELECT accountingID, incurredDate, amount, description, interest, judgmentDate FROM ACCOUNTING WHERE caseID = %s", (case_id,))
-            liabilities = cursor.fetchall()
-
-            if not liabilities:
-                click.echo(f"No liabilities found for case '{casenumber}'.")
-            else:
-                click.echo(f"Liabilities associated with case '{casenumber}':")
-                for index, liability in enumerate(liabilities, start=1):
-                    click.echo(f"{index}. Incurred Date: {liability[1]} | Amount: {liability[2]} | Description: {liability[3]} | Interest: {liability[4]} | Judgment Date: {liability[5]}")
-                
-                liability_choice = click.prompt('Enter the number of the liability to calculate interest', type=int)
-                selected_liability = liabilities[liability_choice - 1] if 1 <= liability_choice <= len(liabilities) else None
-                
-                if selected_liability:
-                    start_date = click.prompt('Enter start date of term (YYYY-MM-DD)', default=selected_liability[1], type=str)
-                    end_date = click.prompt('Enter end date of term (YYYY-MM-DD)', default=dt.today().strftime('%Y-%m-%d'), type=str)
-                    
-                    # Validate date inputs
-                    start_date = dt.strptime(start_date, '%Y-%m-%d').date()
-                    end_date = dt.strptime(end_date, '%Y-%m-%d').date()
-                    
-                    if start_date > end_date:
-                        click.echo("Start date cannot be after end date.")
-                    else:
-                        # Calculate interest based on logic
-                        click.echo(f"Calculating interest for Liability ID: {selected_liability[0]} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}...")
-
-                        # Fetch interest rates within the specified interval from the INTEREST table
-                        cursor.execute("SELECT date, rate FROM INTEREST WHERE date BETWEEN %s AND %s", (start_date, end_date))
-                        interest_rates = cursor.fetchall()
-                        
-                        # Perform interest calculation based on fetched rates
-                        total_interest = decimal.Decimal('0.0')
-                        prev_date = start_date
-                        for rate_date, rate in interest_rates:
-                            if rate_date > start_date:
-                                days_diff = (rate_date - prev_date).days
-                                rate_decimal = decimal.Decimal(str(rate))/1000  # Convert rate to Decimal
-                                interest_amount = selected_liability[2] * rate_decimal * days_diff
-                                total_interest += interest_amount
-                                prev_date = rate_date
-                        
-                        # Calculate interest for the remaining days till the end date
-                        days_diff = (end_date - prev_date).days
-                        rate_decimal = decimal.Decimal(str(interest_rates[-1][1]))/1000  # Convert rate to Decimal
-                        interest_amount = selected_liability[2] * rate_decimal * days_diff
-                        total_interest += interest_amount
-
-                        click.echo(f"Total interest calculated: {total_interest}")
-
-                else:
-                    click.echo("Invalid liability choice.")
-
-        else:
-            click.echo(f"Case '{casenumber}' not found.")
-    
-    except mysql.connector.Error as err:
-        click.echo(f"Error: {err}")
 
 
 
         
 @cli.command()
 @click.option('--casenumber', prompt='Enter case number', help='Case number to calculate interest')
-def calculate_interest2(casenumber):
+def calculate_interest(casenumber):
     '''Calculate interest for a liability'''
 
     try:
@@ -709,8 +637,66 @@ def calculate_interest2(casenumber):
                                 prev_date = rate_date
                                         
 
+                    elif selected_liability[6] == 'contractual' and selected_liability[8]:
+                        accounting_interest = decimal.Decimal(str(selected_liability[7]))
 
+                        # Define start date and end date for interest calculation
+                        contractual_date_input = click.prompt('Enter contractual start date for interest calculation (YYYY-MM-DD)', default=start_date, type=str)
+                        contractual_date_end_input = click.prompt('Enter end date of term (YYYY-MM-DD)', default=dt.today().strftime('%Y-%m-%d'), type=str)
+
+                        # Validate date inputs
+                        start_date = dt.strptime(contractual_date_input, '%Y-%m-%d').date()
+                        end_date = dt.strptime(contractual_date_end_input, '%Y-%m-%d').date()
+
+                        if start_date > end_date:
+                            click.echo("Contractual date cannot be after the end date.")
+                            return
+
+                        # Calculate interest based on accounting interest before judgment date
+                        total_interest = decimal.Decimal('0.0')
+                        prev_date = start_date
+
+                        # If judgment date exists, split the interest calculation
+                        if selected_liability[8] >= end_date:
+                            accounting_interest = decimal.Decimal(str(selected_liability[7]))
+                            # Calculate interest based on accounting interest
+                    
                         
+                            days_diff = (end_date - start_date).days
+
+                            interest_rate = accounting_interest / 365
+                            interest_amount = selected_liability[4] * interest_rate * days_diff
+                            total_interest += interest_amount
+
+                            click.echo(f"Total interest calculated: {total_interest}")
+                        else:
+                    
+                            prev_date = start_date
+
+                            # If judgment date exists, split the interest calculation
+                            
+                            judgment_date = selected_liability[8]
+                            if start_date < judgment_date:
+                                days_diff = (judgment_date - prev_date).days
+                                interest_rate = accounting_interest / 365
+                                interest_amount = selected_liability[4] * interest_rate * days_diff
+                                total_interest += interest_amount
+                                prev_date = judgment_date
+
+                            # Calculate interest based on statutory rates after judgment date
+                            days_diff = (end_date - prev_date).days
+                            cursor.execute("SELECT date, interest FROM INTEREST WHERE date BETWEEN %s AND %s", (prev_date, end_date))
+                            interest_rates_after = cursor.fetchall()
+
+                            for rate_date, rate in interest_rates_after:
+                                days_diff = (rate_date - prev_date).days
+                                rate_decimal = decimal.Decimal(str(rate)) / 365  # Convert rate to Decimal
+                                interest_amount = selected_liability[4] * rate_decimal * days_diff
+                                click.echo(f"Interest amount: {interest_amount}")
+                                total_interest += interest_amount
+                                prev_date = rate_date
+
+
                     
 
                     elif selected_liability[6] == 'contractual':
@@ -742,9 +728,7 @@ def calculate_interest2(casenumber):
                     
 
 
-                    elif selected_liability[6] == 'contractual' and selected_liability[8]:
-                        print('test')
-
+                    
                     
 
 

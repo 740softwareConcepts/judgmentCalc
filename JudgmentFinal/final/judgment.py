@@ -714,7 +714,33 @@ def calculate_interest2(casenumber):
                     
 
                     elif selected_liability[6] == 'contractual':
-                        print('test')
+                        accounting_interest = decimal.Decimal(str(selected_liability[7]))
+
+                        # Define start date and end date for interest calculation
+                        contractual_date_input = click.prompt('Enter contractual start date for interest calculation (YYYY-MM-DD)', default=start_date, type=str)
+                        contractual_date_end_input = click.prompt('Enter end date of term (YYYY-MM-DD)', default=dt.today().strftime('%Y-%m-%d'), type=str)
+                        
+                        # Validate date inputs
+                        start_date = dt.strptime(contractual_date_input, '%Y-%m-%d').date()
+                        end_date = dt.strptime(contractual_date_end_input, '%Y-%m-%d').date()
+                        if start_date > end_date:
+                            click.echo("Contractual date cannot be after the end date.")
+                            return   
+
+                        # Calculate interest based on accounting interest
+                        total_interest = decimal.Decimal('0.0')
+                        prev_date = start_date
+                        days_diff = (end_date - start_date).days
+
+                        interest_rate = accounting_interest / 365
+                        interest_amount = selected_liability[4] * interest_rate * days_diff
+                        total_interest += interest_amount
+
+                        click.echo(f"Total interest calculated: {total_interest}")
+
+
+                    
+
 
                     elif selected_liability[6] == 'contractual' and selected_liability[8]:
                         print('test')

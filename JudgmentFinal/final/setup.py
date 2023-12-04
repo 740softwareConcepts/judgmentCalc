@@ -8,6 +8,7 @@ setup(
         'Click',
         'mysql.connector',
         'datetime',
+        'decimal',
     ],
     entry_points='''
         [console_scripts]

@@ -575,7 +575,6 @@ def liabilities(add, remove, view, case_number, judgment_date):
 
 
 
-
 @cli.command()
 @click.option('--casenumber', prompt='Enter case number', help='Case number to calculate interest')
 def calculate_interest(casenumber):
@@ -711,7 +710,7 @@ def calculate_interest2(casenumber):
                                         
 
 
-                        click.echo(f"Total interest calculated: {total_interest}")
+                        
                     
 
                     elif selected_liability[6] == 'contractual':
@@ -722,7 +721,7 @@ def calculate_interest2(casenumber):
 
                     
 
-                    click.echo(f"Total interest calculated: {total_interest}")
+
 
                     # Fetch involved parties from CLIENTS table
                     cursor.execute("SELECT * FROM CLIENTS WHERE caseID = %s", (case_id,))
@@ -730,11 +729,15 @@ def calculate_interest2(casenumber):
 
                     # Display report with involved parties, liability details, and total interest
                     click.echo("\nReport:")
+                    #add break line
+                    click.echo("-------------------------------------------------------------------------------------------------------------------------------------------------------------------")
                     for party in involved_parties:
                         click.echo(f"Involved Party: {party[1]} {party[2]} | Type: {party[3]}")
 
-                    click.echo(f"Liability ID: {selected_liability[0]} | Principal Amount: {selected_liability[3]} | Period: {start_date} to {end_date} | Total Interest: {total_interest}")
-
+                    #add break line
+                    click.echo("-------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+                    click.echo(f"Liability ID: {selected_liability[0]} | Principal Amount: {selected_liability[4]} | Period: {start_date} to {end_date} | Total Interest: {total_interest}")
+                    click.echo(f"Total interest calculated: {total_interest}")
                 else:
                     click.echo("Invalid liability choice.")
 
